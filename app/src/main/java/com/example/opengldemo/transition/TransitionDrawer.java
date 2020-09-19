@@ -1,12 +1,13 @@
 package com.example.opengldemo.transition;
 
 import android.content.Context;
-import android.opengl.EGL14;
 import android.opengl.GLES20;
+import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.util.Arrays;
 
 /**
  * @author : Jiabo
@@ -17,7 +18,6 @@ import java.nio.FloatBuffer;
 public class TransitionDrawer extends IDrawer {
 
     private static final String TAG = "TransitionDrawer";
-
     public enum TransitionType {
         CLOCKWISE_ROTATION, //顺时针旋转
         ANTICLOCKWISE_ROTATION,  //逆时针旋转
@@ -25,6 +25,7 @@ public class TransitionDrawer extends IDrawer {
         PUSH_AWAY  //推远
     }
 
+    private final Context mContext;
     private int mProgram;//自定义渲染管线着色器程序id
     private int muMVPMatrixHandle;//总变换矩阵引用
     private int maPositionHandle;//顶点位置属性引用
@@ -49,13 +50,13 @@ public class TransitionDrawer extends IDrawer {
 
 
     public TransitionDrawer(Context context, TransitionType type, int textureId1, int textureId2) {
+        mContext = context;
         mTextureId1 = textureId1;
         mTextureId2 = textureId2;
 
         mTransitionType = type;
         initTransitionType(type);
         initVertexData();
-        initShader(context);
     }
 
     private void initTransitionType(TransitionType type) {
@@ -75,6 +76,80 @@ public class TransitionDrawer extends IDrawer {
                 //推远的参数设置
                 break;
         }
+    }
+
+    @Override
+    public void setProgress(float progress) {
+        mProgress = progress;
+    }
+
+    @Override
+    protected void createGLPrg() {
+        initShader(mContext);
+        //指定使用某套着色器程序
+        GLES20.glUseProgram(mProgram);
+
+        GLES20.glUniform1f(muProgressHandle, mProgress);
+        GLES20.glUniform1f(mRotationHandle, mRotation);
+        GLES20.glUniform1f(mZoomTypeHandle, isZoomIn);
+    }
+
+    @Override
+    protected void activateTexture() {
+        //绑定纹理
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureId1);
+        GLES20.glUniform1i(mTexture1, 0);
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureId2);
+        GLES20.glUniform1i(mTexture2, 1);
+
+        //配置边缘过度参数
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+    }
+
+    @Override
+    protected void bindBitmapToTexture() {
+
+    }
+
+    @Override
+    protected void doDraw() {
+        //启用顶点位置数据数组
+        GLES20.glEnableVertexAttribArray(maPositionHandle);
+        //启用顶点纹理坐标数据数组
+        GLES20.glEnableVertexAttribArray(maTexCoorHandle);
+
+        //将最终变换矩阵传入渲染管线
+        GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mMatrix, 0);
+        //将顶点位置数据传入渲染管线
+        GLES20.glVertexAttribPointer(maPositionHandle, 3, GLES20.GL_FLOAT, false, 3 * 4, mVertexBuffer);
+        //将纹理数据传入渲染管线
+        GLES20.glVertexAttribPointer(maTexCoorHandle, 2, GLES20.GL_FLOAT, false, 2 * 4, mTextureBuffer);
+
+        //绘制纹理矩形
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vCount);
+    }
+
+    @Override
+    public long getDurationAsNano() {
+        //一个转场动效持续1s
+        return ONE_BILLION;
+    }
+
+    @Override
+    public void release() {
+        GLES20.glClearColor(0f, 0f, 0f, 0f);
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+        GLES20.glDisableVertexAttribArray(maPositionHandle);
+        GLES20.glDisableVertexAttribArray(maTexCoorHandle);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+        GLES20.glDeleteTextures(2, new int[]{mTextureId1, mTextureId2}, 0);
+        GLES20.glDeleteProgram(mProgram);
     }
 
     private void initVertexData() {
@@ -119,11 +194,13 @@ public class TransitionDrawer extends IDrawer {
         //加载顶点着色器脚本内容
         //顶点着色器
         String vertexShader = TextResourceReader.readTextFileFromAsset(context, "transition_vertex.glsl");
-        //加载片元着色器的脚本内容
         //片元着色器
+        //加载片元着色器的脚本内容
         String fragmentShader = initFragmentShader(context);
         //基于顶点着色器与片元着色器创建程序
         mProgram = ShaderHelper.buildProgram(vertexShader, fragmentShader);
+        GLES20.glLinkProgram(mProgram);
+
         //获取程序中顶点位置属性引用
         maPositionHandle = GLES20.glGetAttribLocation(mProgram, "aPosition");
         //获取程序中顶点纹理坐标属性引用
@@ -153,62 +230,5 @@ public class TransitionDrawer extends IDrawer {
                 break;
         }
         return fragmentShader;
-    }
-
-    @Override
-    public void setProgress(float progress) {
-        mProgress = progress;
-    }
-
-
-    @Override
-    public void draw() {
-        //初始化矩阵方法
-        initDefMatrix();
-
-        //指定使用某套着色器程序
-        GLES20.glUseProgram(mProgram);
-        //将最终变换矩阵传入渲染管线
-        GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mMatrix, 0);
-        //将顶点位置数据传入渲染管线
-        GLES20.glVertexAttribPointer(maPositionHandle, 3, GLES20.GL_FLOAT, false, 3 * 4, mVertexBuffer);
-        //将纹理数据传入渲染管线
-        GLES20.glVertexAttribPointer(maTexCoorHandle, 2, GLES20.GL_FLOAT, false, 2 * 4, mTextureBuffer);
-        //启用顶点位置数据数组
-        GLES20.glEnableVertexAttribArray(maPositionHandle);
-        //启用顶点纹理坐标数据数组
-        GLES20.glEnableVertexAttribArray(maTexCoorHandle);
-
-        GLES20.glUniform1f(muProgressHandle, mProgress);
-        GLES20.glUniform1f(mRotationHandle, mRotation);
-        GLES20.glUniform1f(mZoomTypeHandle, isZoomIn);
-        //绑定纹理
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureId1);
-        GLES20.glUniform1i(mTexture1, 0);
-
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureId2);
-        GLES20.glUniform1i(mTexture2, 1);
-
-        //绘制纹理矩形
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vCount);
-    }
-
-    @Override
-    public long getDurationAsNano() {
-        //一个转场动效持续1s
-        return ONE_BILLION;
-    }
-
-    @Override
-    public void release() {
-        GLES20.glClearColor(0f, 0f, 0f, 0f);
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-        GLES20.glDisableVertexAttribArray(maPositionHandle);
-        GLES20.glDisableVertexAttribArray(maTexCoorHandle);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
-        GLES20.glDeleteTextures(2, new int[]{mTextureId1, mTextureId2}, 0);
-        GLES20.glDeleteProgram(mProgram);
     }
 }

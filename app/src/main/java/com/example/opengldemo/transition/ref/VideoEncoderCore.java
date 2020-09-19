@@ -18,6 +18,7 @@ package com.example.opengldemo.transition.ref;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
+import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.os.Build;
@@ -58,6 +59,16 @@ public class VideoEncoderCore {
     private boolean mMuxerStarted;
 
 
+    //音视频分离器
+    private MediaExtractor mExtractor;
+    private int mAudioTrack;
+    private MediaFormat mMediaFormat;
+    private long mCurSampleTime;
+    private int mCurSampleFlag;
+    private ByteBuffer mCusAudioBuffer;
+    private MediaCodec.BufferInfo mCusBufferInfo;
+    private int mBufferSize;
+
     /**
      * Configures encoder and muxer state, and prepares the input Surface.
      */
@@ -94,6 +105,24 @@ public class VideoEncoderCore {
 
         mTrackIndex = -1;
         mMuxerStarted = false;
+    }
+
+    public void setAudio(String path) {
+        for (int i = 0; i < mExtractor.getTrackCount(); i++) {
+            MediaFormat mediaFormat = mExtractor.getTrackFormat(i);
+            String mine = mediaFormat.getString(MediaFormat.KEY_MIME);
+            if (mine != null && mine.startsWith("audio/")) {
+                mAudioTrack = i;
+                break;
+            }
+        }
+        if (mAudioTrack >= 0) {
+            mMediaFormat = mExtractor.getTrackFormat(mAudioTrack);
+        }
+
+        mCusAudioBuffer = ByteBuffer.allocate(500 * 1024);
+        mCusBufferInfo = new MediaCodec.BufferInfo();
+        mBufferSize = readBuffer(mCusAudioBuffer);
     }
 
     /**
@@ -163,7 +192,11 @@ public class VideoEncoderCore {
                 Log.d(TAG, "encoder output format changed: " + newFormat);
 
                 // now that we have the Magic Goodies, start the muxer
-                mTrackIndex = mMuxer.addTrack(newFormat);
+                if (mMediaFormat != null) {
+                    mTrackIndex = mMuxer.addTrack(mMediaFormat);
+                } else {
+                    mTrackIndex = mMuxer.addTrack(newFormat);
+                }
                 mMuxer.start();
                 mMuxerStarted = true;
             } else if (encoderStatus < 0) {
@@ -193,7 +226,11 @@ public class VideoEncoderCore {
                     encodedData.position(mBufferInfo.offset);
                     encodedData.limit(mBufferInfo.offset + mBufferInfo.size);
 
-                    mMuxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
+                    if (mMediaFormat != null) {
+                        setMuxerCustomAudio();
+                    } else {
+                        mMuxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
+                    }
                     if (VERBOSE) {
                         Log.d(TAG, "sent " + mBufferInfo.size + " bytes to muxer, ts=" +
                                 mBufferInfo.presentationTimeUs);
@@ -212,5 +249,24 @@ public class VideoEncoderCore {
                 }
             }
         }
+    }
+
+    private void setMuxerCustomAudio() {
+        mCusBufferInfo.set(0, mBufferSize, mExtractor.getSampleTime(), mExtractor.getSampleFlags());
+        mMuxer.writeSampleData(mTrackIndex, mCusAudioBuffer, mCusBufferInfo);
+    }
+
+    private int readBuffer(ByteBuffer buffer) {
+        mExtractor.selectTrack(mAudioTrack);
+        int readSampleCount = mExtractor.readSampleData(buffer, 0);
+        if (readSampleCount < 0) {
+            return -1;
+        }
+        //记录当前帧的时间戳
+        mCurSampleTime = mExtractor.getSampleTime();
+        mCurSampleFlag = mExtractor.getSampleFlags();
+
+        mExtractor.advance();
+        return readSampleCount;
     }
 }

@@ -1,5 +1,7 @@
 package com.example.opengldemo.transition;
 
+import android.opengl.Matrix;
+
 import static com.example.opengldemo.transition.MatrixUtils.TYPE_FITXY;
 
 /**
@@ -9,6 +11,7 @@ import static com.example.opengldemo.transition.MatrixUtils.TYPE_FITXY;
  */
 public abstract class IDrawer {
 
+    private static final String TAG = "IDrawer";
     public static long ONE_BILLION = 1000000000;
 
     //纹理id
@@ -21,13 +24,17 @@ public abstract class IDrawer {
     protected int mWorldHeight = -1;
     protected float[] mMatrix;
 
-    public abstract void draw();
-
-    public abstract long getDurationAsNano();
-
-    public abstract void setProgress(float progress);
-
-    public abstract void release();
+    public void draw(boolean isMakeVideo) {
+        initDefMatrix(isMakeVideo);
+        //创建、编译并启动OpenGL着色器
+        createGLPrg();
+        //激活并绑定纹理单元
+        activateTexture();
+        //绑定图片到纹理单元
+        bindBitmapToTexture();
+        //开始渲染绘制
+        doDraw();
+    }
 
     public void setVideoSize(int width, int height) {
         mVideoWidth = width;
@@ -39,13 +46,31 @@ public abstract class IDrawer {
         mWorldHeight = height;
     }
 
-    protected void initDefMatrix() {
+    protected void initDefMatrix(boolean isMakeVideo) {
         if (mMatrix != null) {
             return;
         }
         mMatrix = new float[16];
-        MatrixUtils.getMatrix(mMatrix, TYPE_FITXY, mVideoWidth, mVideoHeight, mWorldWidth, mWorldHeight);
-
+        if (isMakeVideo) {
+            Matrix.setIdentityM(mMatrix, 0);
+//            Matrix.rotateM(mMatrix, 0, 90, 1, 0, 0);
+        } else {
+            MatrixUtils.getMatrix(mMatrix, TYPE_FITXY, mVideoWidth, mVideoHeight, mWorldWidth, mWorldHeight);
+        }
     }
+
+    public abstract long getDurationAsNano();
+
+    public abstract void setProgress(float progress);
+
+    public abstract void release();
+
+    protected abstract void createGLPrg();
+
+    protected abstract void activateTexture();
+
+    protected abstract void bindBitmapToTexture();
+
+    protected abstract void doDraw();
 
 }

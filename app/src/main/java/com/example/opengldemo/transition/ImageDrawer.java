@@ -1,10 +1,8 @@
 package com.example.opengldemo.transition;
 
 import android.graphics.Bitmap;
-import android.opengl.EGL14;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
-
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -17,6 +15,7 @@ import java.nio.FloatBuffer;
  */
 public class ImageDrawer extends IDrawer {
 
+    private static final String TAG = "ImageDrawer";
     private final Bitmap mBitmap;
     //顶点坐标
     private float[] mVertexCoors = new float[]{
@@ -49,11 +48,6 @@ public class ImageDrawer extends IDrawer {
     private FloatBuffer mVertexBuffer;
     private FloatBuffer mTextureBuffer;
 
-    public ImageDrawer(Bitmap bitmap) {
-        mBitmap = bitmap;
-        initPos();
-    }
-
     public ImageDrawer(Bitmap bitmap, int textureId) {
         mBitmap = bitmap;
         mTextureId1 = textureId;
@@ -75,22 +69,6 @@ public class ImageDrawer extends IDrawer {
         mTextureBuffer.position(0);
     }
 
-
-    @Override
-    public void draw() {
-        if (mTextureId1 != -1) {
-            initDefMatrix();
-            //创建、编译并启动OpenGL着色器
-            createGLPrg();
-            //激活并绑定纹理单元
-            activateTexture();
-            //绑定图片到纹理单元
-            bindBitmapToTexture();
-            //开始渲染绘制
-            doDraw();
-        }
-    }
-
     @Override
     public void release() {
         GLES20.glClearColor(0f, 0f, 0f, 0f);
@@ -102,17 +80,11 @@ public class ImageDrawer extends IDrawer {
         GLES20.glDeleteProgram(mProgram);
     }
 
-    private void createGLPrg() {
+    @Override
+    protected void createGLPrg() {
         if (mProgram == -1) {
-            int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, getVertexShader());
-            int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, getFragmentShader());
-
             //创建OpenGL ES程序，注意：需要再OpenGL渲染线程中创建，否则无法渲染
-            mProgram = GLES20.glCreateProgram();
-            //将顶点着色器加入到程序
-            GLES20.glAttachShader(mProgram, vertexShader);
-            //将片元着色器加入到程序
-            GLES20.glAttachShader(mProgram, fragmentShader);
+            mProgram = ShaderHelper.buildProgram(getVertexShader(), getFragmentShader());
             //连接到着色器程序
             GLES20.glLinkProgram(mProgram);
 
@@ -121,11 +93,11 @@ public class ImageDrawer extends IDrawer {
             mTextureHandler = GLES20.glGetUniformLocation(mProgram, "uTexture");
             mVertexMatrixHandler = GLES20.glGetUniformLocation(mProgram, "uMatrix");
         }
-
         GLES20.glUseProgram(mProgram);
     }
 
-    private void activateTexture() {
+    @Override
+    protected void activateTexture() {
         //激活指定纹理单元
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         //绑定纹理ID到纹理单元
@@ -139,14 +111,16 @@ public class ImageDrawer extends IDrawer {
         GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
     }
 
-    private void bindBitmapToTexture() {
+    @Override
+    protected void bindBitmapToTexture() {
         if (!mBitmap.isRecycled()) {
             //绑定图片到被激活的纹理单元
             GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, mBitmap, 0);
         }
     }
 
-    private void doDraw() {
+    @Override
+    protected void doDraw() {
         //启动顶点句柄
         GLES20.glEnableVertexAttribArray(mVertexPosHandler);
         GLES20.glEnableVertexAttribArray(mTexturePosHandler);
@@ -158,16 +132,6 @@ public class ImageDrawer extends IDrawer {
         GLES20.glVertexAttribPointer(mTexturePosHandler, 2, GLES20.GL_FLOAT, false, 0, mTextureBuffer);
 
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
-    }
-
-    private int loadShader(int type, String shaderCode) {
-        //根据type创建顶点着色器或者片元着色器
-        int shader = GLES20.glCreateShader(type);
-        //将资源加入到着色器中，并编译
-        GLES20.glShaderSource(shader, shaderCode);
-        GLES20.glCompileShader(shader);
-
-        return shader;
     }
 
     @Override

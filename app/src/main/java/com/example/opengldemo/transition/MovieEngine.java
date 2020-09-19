@@ -180,7 +180,7 @@ public class MovieEngine extends HandlerThread {
         IDrawer drawer = mDrawerList.get(movieIndex);
         calculateProgress(mDrawerList.get(movieIndex).getDurationAsNano(), curTime);
         drawer.setProgress(mTransitionProgress);
-        drawer.draw();
+        drawer.draw(true);
     }
 
     /**
