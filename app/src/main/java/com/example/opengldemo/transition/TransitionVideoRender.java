@@ -15,6 +15,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import static com.example.opengldemo.transition.IDrawer.ONE_BILLION;
+import static com.example.opengldemo.transition.TransitionDrawer.TransitionType.CLOCKWISE_ROTATION;
 import static com.example.opengldemo.transition.TransitionDrawer.TransitionType.PUSH_AWAY;
 import static com.example.opengldemo.transition.TransitionDrawer.TransitionType.ZOOM_IN;
 
@@ -103,6 +104,7 @@ public class TransitionVideoRender implements GLSurfaceView.Renderer {
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         Log.d(TAG, "onSurfaceChanged");
+        isPause = false;
         GLES20.glViewport(0, 0, width, height);
         initDrawerList();
         initMovieEngine();
@@ -209,7 +211,6 @@ public class TransitionVideoRender implements GLSurfaceView.Renderer {
     }
 
     private ArrayList<IDrawer> generaDrawerData() {
-
         mBitmapList.clear();
         for (int i = 0; i < mImgPathList.size(); i++) {
             Bitmap bitmap = rotateBitmap(BitmapHelper.decodeBitmap(720, mImgPathList.get(i)));
@@ -229,14 +230,14 @@ public class TransitionVideoRender implements GLSurfaceView.Renderer {
 
         textureId1 = TextureHelper.loadTextureByBitmap(bitmap1);
         textureId2 = TextureHelper.loadTextureByBitmap(bitmap2);
-        drawerList.add(new TransitionDrawer(mContext, ZOOM_IN, textureId1, textureId2));
+        drawerList.add(new TransitionDrawer(mContext, CLOCKWISE_ROTATION, textureId1, textureId2));
 
         textureId1 = TextureHelper.loadTextureByBitmap(bitmap2);
         drawerList.add(new ImageDrawer(bitmap2, textureId1));
 
         textureId1 = TextureHelper.loadTextureByBitmap(bitmap2);
         textureId2 = TextureHelper.loadTextureByBitmap(bitmap3);
-        drawerList.add(new TransitionDrawer(mContext, PUSH_AWAY, textureId1, textureId2));
+        drawerList.add(new TransitionDrawer(mContext, CLOCKWISE_ROTATION, textureId1, textureId2));
 
         textureId1 = TextureHelper.loadTextureByBitmap(bitmap2);
         drawerList.add(new ImageDrawer(bitmap3, textureId1));

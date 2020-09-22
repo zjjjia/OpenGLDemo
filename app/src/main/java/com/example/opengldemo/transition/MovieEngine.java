@@ -8,7 +8,6 @@ import android.os.Message;
 import android.util.Log;
 import android.view.Surface;
 
-
 import com.example.opengldemo.transition.ref.VideoEncoderCore;
 import com.example.opengldemo.transition.ref.gles.EglCore;
 import com.example.opengldemo.transition.ref.gles.WindowSurface;
