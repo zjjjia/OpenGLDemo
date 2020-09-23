@@ -31,7 +31,7 @@ public class TextResourceReader {
             in.close();
             result = new String(buff, "UTF-8");
             result = result.replace("\\r\\n", "\n");
-            Log.d(TAG, "read result is: " + result);
+//            Log.d(TAG, "read result is: " + result);
         } catch (IOException e) {
             e.printStackTrace();
             Log.e(TAG, "readTextFileFromAsset: ", e);

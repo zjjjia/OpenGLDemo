@@ -22,7 +22,6 @@ import java.util.Locale;
 
 import static com.example.opengldemo.transition.IDrawer.ONE_BILLION;
 
-
 public class MovieEngine extends HandlerThread {
 
     private static final String TAG = "MovieEngine";
@@ -32,7 +31,7 @@ public class MovieEngine extends HandlerThread {
     int height;
     int bitRate;
     File outputFile;
-    ProgressListener listener;
+    ProgressListener mListener;
     private EglCore mEglCore;
     private WindowSurface mWindowSurface;
     private MovieHandler mMovieHandler;
@@ -68,6 +67,10 @@ public class MovieEngine extends HandlerThread {
         }
     }
 
+    public void setMovieProgress(ProgressListener listener) {
+        mListener = listener;
+    }
+
     private void makeMovie() {
         Log.d(TAG, "makeMovie");
         //不断绘制。
@@ -92,11 +95,11 @@ public class MovieEngine extends HandlerThread {
                 timeSections[i] = totalDuration;
                 totalDuration += drawer.getDurationAsNano();
             }
-            if (listener != null) {
+            if (mListener != null) {
                 uiHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        listener.onStart();
+                        mListener.onStart();
                     }
                 });
             }
@@ -127,11 +130,11 @@ public class MovieEngine extends HandlerThread {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            if (isCompleted && listener != null) {
+            if (isCompleted && mListener != null) {
                 uiHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        listener.onCompleted(outputFile.getAbsolutePath());
+                        mListener.onCompleted(outputFile.getAbsolutePath());
                     }
                 });
             }
@@ -140,11 +143,11 @@ public class MovieEngine extends HandlerThread {
     }
 
     private void updateProgress(final long tempTime, final long totalDuration) {
-        if (listener != null) {
+        if (mListener != null) {
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    listener.onProgress(tempTime, totalDuration);
+                    mListener.onProgress(tempTime, totalDuration);
                 }
             });
         }
@@ -290,7 +293,7 @@ public class MovieEngine extends HandlerThread {
             }
 
             engine.outputFile = outputFile;
-            engine.listener = listener;
+            engine.mListener = listener;
             engine.mDrawerList = drawerList;
             engine.start();
             return engine;

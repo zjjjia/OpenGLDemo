@@ -80,10 +80,12 @@ public class ShaderHelper {
         GLES20.glShaderSource(shaderObjectId, shaderCode);
         GLES20.glCompileShader(shaderObjectId);
         final int[] compileStatue = new int[1];
+        //获取shader编译情况
         GLES20.glGetShaderiv(shaderObjectId, GLES20.GL_COMPILE_STATUS, compileStatue, 0);
         if ((compileStatue[0] == 0)) {
             GLES20.glDeleteShader(shaderObjectId);
-            Log.e(TAG, "compileShader: compilation of shader failed");
+            Log.e(TAG, "compileShader: compilation of shader failed" + type);
+            Log.e("ES20_ERROR", GLES20.glGetShaderInfoLog(shaderObjectId));
             return 0;
         }
 

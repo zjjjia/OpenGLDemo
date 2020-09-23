@@ -16,8 +16,6 @@ import javax.microedition.khronos.opengles.GL10;
 
 import static com.example.opengldemo.transition.IDrawer.ONE_BILLION;
 import static com.example.opengldemo.transition.TransitionDrawer.TransitionType.CLOCKWISE_ROTATION;
-import static com.example.opengldemo.transition.TransitionDrawer.TransitionType.PUSH_AWAY;
-import static com.example.opengldemo.transition.TransitionDrawer.TransitionType.ZOOM_IN;
 
 /**
  * @author : Jiabo
@@ -39,13 +37,8 @@ public class TransitionVideoRender implements GLSurfaceView.Renderer {
     private int frameIndex;
     private float mTransitionProgress;
 
-    private MovieEngine mEngine;
+    private boolean isRenderToRecorder;
 
-    public TransitionVideoRender(Context context) {
-        mContext = context;
-        mDrawerList = new ArrayList<>();
-        mBitmapList = new ArrayList<>();
-    }
 
     public TransitionVideoRender(Context context, ArrayList<String> imgPathList) {
         mContext = context;
@@ -53,6 +46,8 @@ public class TransitionVideoRender implements GLSurfaceView.Renderer {
         mBitmapList = new ArrayList<>();
 
         mImgPathList = imgPathList;
+
+        initDrawerList();
     }
 
     public void reload(ArrayList<String> imgPathList) {
@@ -68,13 +63,20 @@ public class TransitionVideoRender implements GLSurfaceView.Renderer {
         mImgPathList = imgPathList;
     }
 
-    public void startMakeVideo() {
-        mEngine.make();
+    public void drawFrame(long curPlayTime) {
+        if (isRenderToRecorder) {
+            generateFrame(curPlayTime);
+        }
     }
 
-    public void release() {
-        mEngine.quit();
+    public long getDuration() {
+        return totalDuration;
     }
+
+    public void setRenderToRecorder(boolean isRenderToRecorder) {
+        this.isRenderToRecorder = isRenderToRecorder;
+    }
+
 
     public void pause() {
         isPause = true;
@@ -92,12 +94,22 @@ public class TransitionVideoRender implements GLSurfaceView.Renderer {
         return !isPause;
     }
 
+    public void setViewport(int width, int height){
+        GLES20.glClearColor(0f, 0f, 0f, 0f);
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+        GLES20.glViewport(0, 0, width, height);
+
+        for (int i = 0; i < mDrawerList.size(); i++) {
+            IDrawer drawer = mDrawerList.get(i);
+            drawer.setWorldSize(width, height);
+        }
+    }
+
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         Log.d(TAG, "onSurfaceCreated");
         GLES20.glClearColor(0f, 0f, 0f, 0f);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-
     }
 
     @SuppressLint("CheckResult")
@@ -106,8 +118,7 @@ public class TransitionVideoRender implements GLSurfaceView.Renderer {
         Log.d(TAG, "onSurfaceChanged");
         isPause = false;
         GLES20.glViewport(0, 0, width, height);
-        initDrawerList();
-        initMovieEngine();
+
         for (int i = 0; i < mDrawerList.size(); i++) {
             IDrawer drawer = mDrawerList.get(i);
             GLES20.glViewport(0, 0, width, height);
@@ -169,30 +180,6 @@ public class TransitionVideoRender implements GLSurfaceView.Renderer {
         float progress = (float) curTime / duration;
         BigDecimal bigDecimal = new BigDecimal(progress);
         mTransitionProgress = bigDecimal.setScale(2, BigDecimal.ROUND_HALF_UP).floatValue();
-    }
-
-    private void initMovieEngine() {
-        mEngine = new MovieEngine.MovieBuilder()
-                .maker(generaDrawerData())
-                .width(mBitmapList.get(0).getWidth())
-                .height(mBitmapList.get(0).getHeight())
-                .listener(new MovieEngine.ProgressListener() {
-                    @Override
-                    public void onStart() {
-
-                    }
-
-                    @Override
-                    public void onCompleted(String path) {
-                        Log.d(TAG, "onCompleted: " + path);
-                    }
-
-                    @Override
-                    public void onProgress(long current, long totalDuration) {
-                    }
-                })
-                .build();
-
     }
 
     private void initDrawerList() {
@@ -259,17 +246,18 @@ public class TransitionVideoRender implements GLSurfaceView.Renderer {
     }
 
     public static int getExternalOESTextureID() {
-        int[] texture = new int[1];
-        GLES20.glGenTextures(1, texture, 0);
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texture[0]);
-        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
-                GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
-        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
-                GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
-                GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
-                GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
-        return texture[0];
+        int[] textures = new int[1];
+        GLES20.glGenTextures(1, textures, 0);
+        int texId = textures[0];
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texId);
+        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER,
+                GLES20.GL_LINEAR);
+        GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER,
+                GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S,
+                GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T,
+                GLES20.GL_CLAMP_TO_EDGE);
+        return texId;
     }
 }

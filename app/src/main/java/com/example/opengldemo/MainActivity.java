@@ -4,6 +4,8 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.os.Environment;
+import android.util.Log;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -12,12 +14,18 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.example.opengldemo.transition.TransitionVideoRender;
+import com.example.opengldemo.transition.encoder.GLMovieRecorder;
 
+import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
+    private ArrayList<String> pathList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
 
         GLSurfaceView glSurfaceView = findViewById(R.id.gl_surface_view);
 
-        ArrayList<String> pathList = new ArrayList<>();
+        pathList = new ArrayList<>();
         pathList.add("/storage/emulated/0/DCIM/update/image1.jpg");
         pathList.add("/storage/emulated/0/DCIM/update/image2.jpg");
         pathList.add("/storage/emulated/0/DCIM/update/image3.jpg");
@@ -56,7 +64,34 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btn_make_video).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                render.startMakeVideo();
+                encoderVideo();
+            }
+        });
+    }
+
+    private void encoderVideo() {
+
+        //生成一个全新的MovieRender，不然与现有的GL环境不一致，相互干扰容易出问题
+        final TransitionVideoRender render = new TransitionVideoRender(this, pathList);
+
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd-HH:mm:ss", Locale.ENGLISH);
+        String format = simpleDateFormat.format(new Date());
+        File outputFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
+                "movie-" + format + ".mp4");
+
+        GLMovieRecorder recorder = new GLMovieRecorder(this);
+        recorder.setDataSource(render);
+//        recorder.setMusic("/storage/emulated/0/DCIM/update/audio.mp3");
+        recorder.configOutput(720, 1080, 10000000, 30, 1, outputFile.getAbsolutePath());
+        recorder.startRecord(new GLMovieRecorder.OnRecordListener() {
+            @Override
+            public void onRecordFinish(boolean success) {
+                Log.d(TAG, "onRecordFinish");
+            }
+
+            @Override
+            public void onRecordProgress(long recordedDuration, long totalDuration) {
+                Log.d(TAG, "onRecordProgress: " + (recordedDuration / totalDuration));
             }
         });
     }
