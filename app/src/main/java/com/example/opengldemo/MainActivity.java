@@ -54,9 +54,9 @@ public class MainActivity extends AppCompatActivity {
         GLSurfaceView glSurfaceView = findViewById(R.id.gl_surface_view);
 
         pathList = new ArrayList<>();
-        pathList.add("/storage/emulated/0/DCIM/update/image1.jpg");
-        pathList.add("/storage/emulated/0/DCIM/update/image2.jpg");
-        pathList.add("/storage/emulated/0/DCIM/update/image3.jpg");
+        pathList.add("/storage/emulated/0/DCIM/Camera/1.jpg");
+        pathList.add("/storage/emulated/0/DCIM/Camera/2.jpg");
+        pathList.add("/storage/emulated/0/DCIM/Camera/3.jpg");
 
         final TransitionVideoRender render = new TransitionVideoRender(this, pathList);
         glSurfaceView.setEGLContextClientVersion(2);
@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
 
         GLMovieRecorder recorder = new GLMovieRecorder(this);
         recorder.setDataSource(render);
-//        recorder.setMusic("/storage/emulated/0/DCIM/update/audio.mp3");
+        recorder.setMusic("/storage/emulated/0/DCIM/Camera/audio.mp3");
         recorder.configOutput(720, 1080, 10000000, 30, 1, outputFile.getAbsolutePath());
         recorder.startRecord(new GLMovieRecorder.OnRecordListener() {
             @Override

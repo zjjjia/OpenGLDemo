@@ -30,7 +30,7 @@ import static com.example.opengldemo.transition.IDrawer.ONE_BILLION;
 /**
  * @author : Jiabo
  * @date : 2020/9/23
- * @decription :
+ * @decription : 使用MediaCodec进行编码
  */
 public class GLMovieRecorder {
     private static final String TAG = "GLMovieRecorder";
@@ -52,7 +52,6 @@ public class GLMovieRecorder {
         mRender = render;
     }
 
-    //todo 添加音乐之后格式不支持播放
     public void setMusic(String audioPath) {
         mAudioPath = audioPath;
     }
@@ -99,6 +98,7 @@ public class GLMovieRecorder {
 
         int frameCount = 0;
         long tempTime = 0;
+        //单位：微秒
         long totalDuration = mRender.getDuration();
 
         AudioRecordThread audioRecordThread = null;

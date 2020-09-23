@@ -35,13 +35,16 @@ public class AudioRecordThread extends Thread {
     private volatile Exception mException;
     private long mVideoDurationUs;
 
+    /**
+     * @param videoDurationMs 单位：毫秒
+     */
     public AudioRecordThread(Context context, String audioPath, MediaMuxer mediaMuxer, CyclicBarrier muxerBarrier, long videoDurationMs) {
         super("AudioRecordThread");
         mContext = context;
         mAudioPath = audioPath;
         mMediaMuxer = mediaMuxer;
         mBarrier = muxerBarrier;
-        mVideoDurationUs = videoDurationMs * 1000;
+        mVideoDurationUs = videoDurationMs / 1000;
     }
 
     @Override
@@ -125,6 +128,7 @@ public class AudioRecordThread extends Thread {
             }
             bufferInfo.presentationTimeUs = sampleTime + preLoopSampleTime;
             //检查是否已经足够
+            Log.d(TAG, "recordAAC: presentationTimeUs: " + bufferInfo.presentationTimeUs + "; duration: " + mVideoDurationUs);
             if (bufferInfo.presentationTimeUs > mVideoDurationUs) {
                 Log.i(TAG, "Record finished,last frame:" + bufferInfo.presentationTimeUs / 1000);
                 break;
@@ -132,7 +136,7 @@ public class AudioRecordThread extends Thread {
             bufferInfo.flags = extractor.getSampleFlags();
             buffer.position(0);
             bufferInfo.size = extractor.readSampleData(buffer, 0);
-            Log.i(TAG, "writeSampleData,flag" + bufferInfo.flags + " size:" + bufferInfo.size + " timeMs:" + bufferInfo.presentationTimeUs / 1000);
+//            Log.i(TAG, "writeSampleData,flag" + bufferInfo.flags + " size:" + bufferInfo.size + " timeMs:" + bufferInfo.presentationTimeUs / 1000);
             mMediaMuxer.writeSampleData(muxerTrackIndex, buffer, bufferInfo);
             preSampleTime = bufferInfo.presentationTimeUs;
             extractor.advance();

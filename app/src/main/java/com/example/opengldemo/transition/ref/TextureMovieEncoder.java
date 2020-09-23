@@ -24,13 +24,14 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 
-import com.glumes.openglbasicshape.transition.ref.gles.EglCore;
-import com.glumes.openglbasicshape.transition.ref.gles.FullFrameRect;
-import com.glumes.openglbasicshape.transition.ref.gles.Texture2dProgram;
-import com.glumes.openglbasicshape.transition.ref.gles.WindowSurface;
+import androidx.annotation.RequiresApi;
+
+import com.example.opengldemo.transition.ref.gles.EglCore;
+import com.example.opengldemo.transition.ref.gles.FullFrameRect;
+import com.example.opengldemo.transition.ref.gles.Texture2dProgram;
+import com.example.opengldemo.transition.ref.gles.WindowSurface;
 
 import java.io.File;
 import java.io.IOException;
